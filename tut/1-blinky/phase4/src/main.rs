@@ -6,6 +6,7 @@
 
 #[cfg(not(test))]
 mod init;
+use core::ptr::write_volatile;
 
 const GPIO_BASE: usize = 0x3F000000 + 0x200000;
 
@@ -21,7 +22,17 @@ fn spin_sleep_ms(ms: usize) {
 }
 
 unsafe fn kmain() -> ! {
+    // use std::ptr::write_volatile;
     // FIXME: STEP 1: Set GPIO Pin 16 as output.
+    let val = 0b001u32;
+    // val << 17;
+    write_volatile(GPIO_FSEL1, val << 17);
+
+
     // FIXME: STEP 2: Continuously set and clear GPIO 16.
-    loop {}
+    loop {
+        write_volatile(GPIO_SET0, 0b10000u32); // 16 as binary 
+        spin_sleep_ms(1000);
+        write_volatile(GPIO_CLR0, 0b10000u32); // 16 as binary
+    }
 }
