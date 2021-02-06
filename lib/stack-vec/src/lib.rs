@@ -60,28 +60,27 @@ impl<'a, T: 'a> StackVec<'a, T> {
     /// greater than the vector's current length, this has no effect. Note that
     /// this method has no effect on the capacity of the vector.
     pub fn truncate(&mut self, len: usize) {
-        if len > self.len {
-            return;
+        if self.len > len {
+            self.len = len;
         }
-        self.len = len
     }
 
     /// Extracts a slice containing the entire vector, consuming `self`.
     ///
     /// Note that the returned slice's length will be the length of this vector,
     /// _not_ the length of the original backing storage.
-    pub fn into_slice(self) -> &'a mut [T] {
-        &mut self.storage[0..self.len]
+    pub fn into_slice(self) -> &'a [T] {
+        &self.storage[..self.len]
     }
 
-    /// Extracts a slice containing the entire vector.
+    /// Extracts a slice containing the entire vector. # not including backing storage
     pub fn as_slice(&self) -> &[T] {
-        &self.storage[0..]
+        &self.storage[..self.len]
     }
 
-    /// Extracts a mutable slice of the entire vector.
+    /// Extracts a mutable slice of the entire vector. # not including backing storage
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self.storage[0..]
+        &mut self.storage[..self.len]
     }
 
     /// Returns the number of elements in the vector, also referred to as its
@@ -117,15 +116,11 @@ impl<'a, T: 'a> StackVec<'a, T> {
         match self.is_full() {
             true => Err(()),
             false => {
-                self.len += 1;
                 self.storage[self.len] = value;
+                self.len += 1;
                 Ok(())
             }
         }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.storage.iter().take(self.len)
     }
 }
 
@@ -136,32 +131,38 @@ impl<'a, T: Clone + 'a> StackVec<'a, T> {
         match self.is_empty() {
             true => None,
             false => {
-                let to_pop = self.storage[self.len].clone();
                 self.len -= 1;
+                let to_pop = self.storage[self.len].clone();
                 Some(to_pop)
             }
         }
     }
 }
-
-// FIXME: Implement `Deref`, `DerefMut`, and `IntoIterator` for `StackVec`.
-// FIXME: Implement IntoIterator` for `&StackVec`.
-
-// doesnt work
-impl<'a, T> Deref for StackVec<'a, T> {
-    type Target = &'a mut [T];
+impl<'a, T: 'a> Deref for StackVec<'a, T> {
+    type Target = [T];
 
     fn deref(&self) -> &Self::Target {
-        &self.storage
+        self.as_slice()
     }
 }
-
-// works
+impl<'a, T: 'a> DerefMut for StackVec<'a, T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
 impl<'a, T: 'a> IntoIterator for StackVec<'a, T> {
-    type Item = &'a mut T;
-    type IntoIter = core::iter::Take<core::slice::IterMut<'a, T>>;
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.storage.into_iter().take(self.len)
+        self.storage[..self.len].into_iter()
+    }
+}
+impl<'a, T: 'a> IntoIterator for &'a StackVec<'a, T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.storage[..self.len].into_iter()
     }
 }
