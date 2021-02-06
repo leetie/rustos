@@ -28,3 +28,5 @@ We have ported it to use newer toolchains such as Rust 2018 edition,
 `cargo-xbuild` (instead of `xargo`), and `no_std` Rust with a minimal shim library
 (instead of custom built std).
 We’ve also developed it further to include topics such as virtual memory management, multicore scheduling, mutex designing, and implementing a networking stack.
+
+![](https://media.giphy.com/media/BXwDa4G7Rf2Hm/giphy.gif)
