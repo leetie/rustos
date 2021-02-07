@@ -200,7 +200,19 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     /// byte was not `byte`, if the read byte was `CAN` and `byte` is not `CAN`,
     /// or if writing the `CAN` byte failed on byte mismatch.
     fn expect_byte_or_cancel(&mut self, byte: u8, expected: &'static str) -> io::Result<u8> {
-        unimplemented!()
+        let mut internal_byte = [0];
+        self.inner.read(&mut internal_byte).unwrap(); // handle if this returns a read of 0 bytes into internal_byte
+        match internal_byte[0] {
+            a if a == byte => return Ok(byte),
+            CAN => {
+                self.inner.write(&[CAN]).unwrap();
+                return ioerr!(ConnectionAborted, expected);
+            }
+            _ => {
+                self.inner.write(&[CAN]).unwrap();
+                return ioerr!(InvalidData, expected);
+            }
+        }
     }
 
     /// Reads a single byte from the inner I/O stream and compares it to `byte`.
@@ -215,17 +227,12 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     /// of `ConnectionAborted` is returned. Otherwise, the error kind is
     /// `InvalidData`.
     fn expect_byte(&mut self, byte: u8, expected: &'static str) -> io::Result<u8> {
-        if byte == CAN {
-            return ioerr!(ConnectionAborted, expected);
-        }
         let mut internal_byte = [0];
-        self.inner.read(&mut internal_byte).unwrap(); // handle if this returns a read of 0 bytes into internal_byte
-        if internal_byte[0] == byte {
-            return Ok(byte);
-        } else if internal_byte[0] == CAN {
-            return ioerr!(ConnectionAborted, expected);
-        } else {
-            return ioerr!(InvalidData, expected);
+        self.inner.read(&mut internal_byte).unwrap(); // handle if bytes written to buffer are 0
+        match internal_byte[0] {
+            a if a == byte => return Ok(byte),
+            CAN => return ioerr!(ConnectionAborted, expected),
+            _ => return ioerr!(InvalidData, expected),
         }
     }
 
