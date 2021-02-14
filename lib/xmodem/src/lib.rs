@@ -59,21 +59,26 @@ impl Xmodem<()> {
         let mut packet = [0u8; 128];
         let mut written = 0;
         'next_packet: loop {
+            // reads data into 'packet' buffer
+            // data in test is ref to mutable [u8]
+            // n represents number of bytes pulled into packet from data
             let n = data.read_max(&mut packet)?;
+            // pad the packet with 0's if not completely 128 bytes, may have old data from prev loop iterations
+            // n will == 0 when there are no more bytes to be pulled into packet from data
             packet[n..].iter_mut().for_each(|b| *b = 0);
-
             if n == 0 {
                 transmitter.write_packet(&[])?;
                 return Ok(written);
             }
-
+            // 10 attempts to write packet
             for _ in 0..10 {
                 match transmitter.write_packet(&packet) {
                     Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
                     Err(e) => return Err(e),
                     Ok(_) => {
                         written += n;
-                        continue 'next_packet;
+                        // jump to next loop iteration for next 128 bytes of data
+                        continue 'next_packet; // loop label -- to specify
                     }
                 }
             }
@@ -260,7 +265,11 @@ impl<T: io::Read + io::Write> Xmodem<T> {
     ///
     /// An error of kind `UnexpectedEof` is returned if `buf.len() < 128`.
     pub fn read_packet(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        if buf.len() < 128 {
+            return ioerr!(UnexpectedEof, "hi");
+        } else {
+            Ok(128)
+        }
     }
 
     /// Sends (uploads) a single packet to the inner stream using the XMODEM
